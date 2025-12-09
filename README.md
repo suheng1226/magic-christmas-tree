@@ -2,8 +2,7 @@
 
 一个基于 Web 前端技术的 3D 互动实验项目。通过摄像头实时捕捉手势，控制 3D 粒子系统的聚合、扩散与交互，呈现出极具节日氛围的视觉体验。
 
-![项目封面图](https://via.placeholder.com/800x400?text=Magic+Christmas+Tree+Screenshot](https://github.com/user-attachments/assets/deb50aa1-f9a3-4e08-8830-00d90d2b9ac5)
-*(建议替换为你的项目运行截图)*
+https://github.com/user-attachments/assets/8881d83c-b5e9-4238-9e9c-5faccb5cf62b
 
 ## ✨ 功能特性
 
