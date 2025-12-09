@@ -228,12 +228,11 @@ const GoldParticlesInstanced: React.FC<{
 
     return (
         <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
-            {/* Changed from planeGeometry to circleGeometry for round particles */}
             <circleGeometry args={[0.025, 8]} />
             <meshStandardMaterial 
                 color="#FFD700"
                 emissive="#FFD700"
-                emissiveIntensity={2.0} // High intensity, controlled by scale
+                emissiveIntensity={2.0} 
                 toneMapped={false}
                 transparent
                 roughness={0.1}
@@ -410,7 +409,7 @@ const DecorationBatch: React.FC<{
                 metalness={0.6} 
                 roughness={0.2}
                 emissive="white"
-                emissiveIntensity={0.8}
+                emissiveIntensity={0.5}
                 toneMapped={false}
             />
         </instancedMesh>
