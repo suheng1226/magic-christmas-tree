@@ -3,16 +3,15 @@ import { HandState, useStore } from '../store';
 
 const Overlay: React.FC = () => {
   const handState = useStore((state) => state.handState);
-  const addPhoto = useStore((state) => state.addPhoto);
+  const addPhotos = useStore((state) => state.addPhotos);
   const photos = useStore((state) => state.photos);
   const toggleDebug = useStore((state) => state.toggleDebug);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const url = URL.createObjectURL(file);
-      addPhoto(url);
+    if (e.target.files && e.target.files.length > 0) {
+      const urls = Array.from(e.target.files).map((file) => URL.createObjectURL(file as File));
+      addPhotos(urls);
     }
   };
 
@@ -47,7 +46,7 @@ const Overlay: React.FC = () => {
                 Magic Christmas
               </h1>
               <p className="text-xs text-gray-300 mt-1">
-                Fist: Build Tree • Open: Scatter • Pinch: Grab Memory
+                Fist: Build Tree • Open: Photo Wall • Pinch: View Memory
               </p>
             </div>
 
@@ -88,10 +87,11 @@ const Overlay: React.FC = () => {
                     className="flex items-center gap-2 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-4 py-1.5 rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-red-500/30"
                 >
                     <span className="text-lg">📂</span>
-                    Add Photo
+                    Add Photos
                 </button>
                 <input 
                     type="file" 
+                    multiple
                     ref={fileInputRef} 
                     className="hidden" 
                     accept="image/*" 

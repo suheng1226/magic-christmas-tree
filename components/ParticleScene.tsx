@@ -458,49 +458,134 @@ const TopStar = () => {
     );
 };
 
-// --- Photo Component (Keep as is, low count) ---
-const FloatingPhoto: React.FC<{ photo: PhotoData; isActive: boolean; index: number; handState: HandState }> = ({ photo, isActive, index, handState }) => {
+// --- Photo Component ---
+const FloatingPhoto: React.FC<{ 
+    photo: PhotoData; 
+    isActive: boolean; 
+    index: number; 
+    totalCount: number;
+    handState: HandState 
+}> = ({ photo, isActive, index, totalCount, handState }) => {
     const meshRef = useRef<THREE.Mesh>(null);
     const texture = useMemo(() => new THREE.TextureLoader().load(photo.url), [photo.url]);
-    
-    const randomPos = useMemo(() => {
-        const theta = Math.random() * Math.PI * 2;
-        const y = -3 + Math.random() * 8;
-        const r = (1 - (y + 4) / 10) * 5.0; 
-        return new THREE.Vector3(r * Math.cos(theta), y, r * Math.sin(theta));
+    const randomScatterPos = useMemo(() => {
+         return new THREE.Vector3((Math.random()-0.5)*20, (Math.random()-0.5)*20, (Math.random()-0.5)*10);
     }, []);
-
-    const [transitionType] = useState(() => Math.floor(Math.random() * 3));
+    
+    // Static random offsets for the "Lively Wall" to ensure stability per photo
+    const wallOffsets = useMemo(() => ({
+        x: (Math.random() - 0.5) * 1.5, // Random shift X
+        y: (Math.random() - 0.5) * 1.5, // Random shift Y
+        rotSpeed: (Math.random() - 0.5) * 0.5,
+        rotOffset: Math.random() * Math.PI
+    }), []);
 
     useFrame((state, delta) => {
         if (!meshRef.current) return;
+        const time = state.clock.getElapsedTime();
 
+        // 1. PINCH: View Active Photo (Foreground)
         if (isActive && handState === HandState.PINCH) {
-            const target = new THREE.Vector3(0, 0, 5); 
-            const t = state.clock.getElapsedTime();
-            if (transitionType === 1) { 
-                target.x += Math.cos(t * 10) * 0.5;
-                target.y += Math.sin(t * 10) * 0.5;
-            } else if (transitionType === 2) { 
-                 target.y += Math.abs(Math.sin(t * 5)) * 0.5;
-            }
+            const target = new THREE.Vector3(0, 0, 8); 
             meshRef.current.position.lerp(target, delta * 4);
             meshRef.current.rotation.set(0, 0, 0); 
-            meshRef.current.scale.lerp(new THREE.Vector3(3, 3, 3), delta * 3); 
+            meshRef.current.scale.lerp(new THREE.Vector3(4, 4, 4), delta * 3); 
+            return;
+        }
+
+        // Calculate Target Position based on State
+        const targetPos = new THREE.Vector3();
+        const targetScale = new THREE.Vector3(1.2, 1.2, 1.2);
+
+        if (handState === HandState.CLOSED) {
+            // --- Double Spiral Logic ---
+            // Split into two groups: Even indices and Odd indices
+            const isEven = index % 2 === 0;
+            const spiralRadius = 5.5; 
+            const heightRange = 10;
+            const bottomY = -4;
+            const pairIndex = Math.floor(index / 2);
+            const totalPairs = Math.max(1, totalCount / 2);
+            const t = pairIndex / totalPairs; 
+            const y = bottomY + (t * heightRange);
+            const speed = 0.2;
+            const rotations = 4;
+            const theta = t * Math.PI * 2 * rotations + (time * speed);
+
+            if (isEven) {
+                targetPos.set(spiralRadius * Math.cos(theta), y, spiralRadius * Math.sin(theta));
+            } else {
+                targetPos.set(spiralRadius * Math.cos(theta + Math.PI), y, spiralRadius * Math.sin(theta + Math.PI));
+            }
+
+        } else if (handState === HandState.OPEN) {
+            // --- Lively Photo Wall Logic (Updated) ---
+            // 5x Size (6.0)
+            targetScale.set(6.0, 6.0, 6.0);
+
+            // Grid Layout
+            const cols = Math.ceil(Math.sqrt(totalCount));
+            const row = Math.floor(index / cols);
+            const col = index % cols;
+            
+            // Increased spacing for larger photos
+            const spacingX = 7.5;
+            const spacingY = 7.2;
+            
+            const gridWidth = cols * spacingX;
+            const gridHeight = Math.ceil(totalCount / cols) * spacingY;
+            
+            // Base Grid Position
+            const xBase = (col * spacingX) - (gridWidth / 2) + (spacingX/2);
+            const yBase = (row * spacingY) - (gridHeight / 2) + 1.5;
+
+            // Add Life:
+            // 1. Curve: Z moves back as X moves away from center (Cylindrical feel)
+            const curveZ = Math.pow(xBase * 0.12, 2); 
+            
+            // 2. Wave: Gentle floating motion
+            const waveY = Math.sin(time * 0.5 + xBase * 0.3) * 0.4;
+            const waveX = Math.cos(time * 0.3 + yBase * 0.3) * 0.2;
+
+            // 3. Randomness (Non-rigid)
+            const looseX = wallOffsets.x;
+            const looseY = wallOffsets.y;
+
+            targetPos.set(
+                xBase + looseX + waveX,
+                yBase + looseY + waveY,
+                -10 - curveZ // Push back slightly more to fit the massive wall
+            );
+
         } else {
-             let target = randomPos.clone();
-             if (handState === HandState.OPEN) {
-                 const time = state.clock.getElapsedTime();
-                 target.set(Math.cos(time * 0.2 + index) * 8, target.y, Math.sin(time * 0.2 + index) * 8);
-             } 
-             meshRef.current.position.lerp(target, delta * 2);
-             meshRef.current.lookAt(0, 0, 20); 
-             meshRef.current.scale.lerp(new THREE.Vector3(0.8, 0.8, 0.8), delta * 2);
+            // --- Unknown / Scatter ---
+            targetPos.copy(randomScatterPos);
+            targetPos.y += Math.sin(time + index) * 0.5;
+        }
+
+        // Apply Movement
+        const lerpSpeed = handState === HandState.PINCH ? 4 : 2;
+        meshRef.current.position.lerp(targetPos, delta * lerpSpeed);
+        
+        // Handle Rotation
+        meshRef.current.lookAt(state.camera.position); 
+        
+        // Add lively tilt in OPEN state (Post-lookAt adjustment)
+        if (handState === HandState.OPEN) {
+             const tilt = Math.sin(time * wallOffsets.rotSpeed + wallOffsets.rotOffset) * 0.15;
+             meshRef.current.rotateZ(tilt);
+        }
+
+        // Apply Scale
+        if (handState === HandState.PINCH) {
+             meshRef.current.scale.lerp(new THREE.Vector3(0.5, 0.5, 0.5), delta * 2);
+        } else {
+            meshRef.current.scale.lerp(targetScale, delta * 2);
         }
     });
 
     return (
-        <RoundedBox ref={meshRef} position={randomPos} args={[1, 1, 0.05]} radius={0.05} smoothness={4}>
+        <RoundedBox ref={meshRef} args={[1, 1, 0.05]} radius={0.05} smoothness={4}>
             <meshStandardMaterial map={texture} emissiveMap={texture} emissive="white" emissiveIntensity={isActive ? 0.6 : 0.25} toneMapped={true} roughness={0.8} />
         </RoundedBox>
     );
@@ -560,12 +645,13 @@ const ParticleScene: React.FC = () => {
           />
       ))}
 
-      {/* 6. Photos (Individual, few) */}
+      {/* 6. Photos (Dynamic Positioning) */}
       {photos.map((photo, i) => (
           <FloatingPhoto 
             key={photo.id}
             photo={photo}
             index={i}
+            totalCount={photos.length}
             isActive={photo.id === activePhotoId}
             handState={handState}
           />

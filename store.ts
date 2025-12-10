@@ -18,6 +18,7 @@ interface AppState {
   
   photos: PhotoData[];
   addPhoto: (url: string) => void;
+  addPhotos: (urls: string[]) => void;
   
   activePhotoId: string | null;
   setActivePhotoId: (id: string | null) => void;
@@ -36,6 +37,9 @@ export const useStore = create<AppState>((set) => ({
   
   photos: [],
   addPhoto: (url) => set((state) => ({ photos: [...state.photos, { id: Math.random().toString(36).substr(2, 9), url }] })),
+  addPhotos: (urls) => set((state) => ({ 
+      photos: [...state.photos, ...urls.map(url => ({ id: Math.random().toString(36).substr(2, 9), url }))] 
+  })),
   
   activePhotoId: null,
   setActivePhotoId: (id) => set({ activePhotoId: id }),
